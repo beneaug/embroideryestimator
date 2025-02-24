@@ -164,14 +164,34 @@ def main():
                     design_data = analyzer.analyze_file(file_contents)
                     design_data['design_name'] = uploaded_file.name
 
-                    # Display design preview
+                    # Display design preview and information in columns
                     col1, col2 = st.columns(2)
 
                     with col1:
                         st.subheader("Design Information")
-                        st.metric("Stitch Count", f"{design_data['stitch_count']:,}")
-                        st.metric("Design Width", f"{design_data['width_mm']:.1f}mm")
-                        st.metric("Design Height", f"{design_data['height_mm']:.1f}mm")
+
+                        # Basic metrics
+                        metrics_col1, metrics_col2 = st.columns(2)
+                        with metrics_col1:
+                            st.metric("Stitch Count", f"{design_data['stitch_count']:,}")
+                            st.metric("Design Width", f"{design_data['width_mm']:.1f}mm")
+                        with metrics_col2:
+                            st.metric("Color Changes", str(design_data['color_changes']))
+                            st.metric("Design Height", f"{design_data['height_mm']:.1f}mm")
+
+                        # Complexity Analysis
+                        st.subheader("Complexity Analysis")
+                        complexity_score = design_data['complexity_score']
+                        st.progress(complexity_score / 100)
+                        st.write(f"Complexity Score: {complexity_score}/100")
+                        st.info(analyzer.get_complexity_description(complexity_score))
+
+                        # Detailed metrics
+                        with st.expander("Detailed Complexity Metrics"):
+                            st.metric("Direction Changes", design_data['direction_changes'])
+                            st.metric("Density Score", f"{design_data['density_score']:.1f}/10")
+                            st.metric("Stitch Length Variance", 
+                                    f"{design_data['stitch_length_variance']:.1f}/10")
 
                         # Thread weight selection
                         thread_weight = st.selectbox("Thread Weight", [40, 60])
@@ -192,7 +212,8 @@ def main():
                         )
                         st.pyplot(fig)
 
-                    # Calculate costs
+                    # Calculate costs with complexity adjustment
+                    complexity_factor = 1 + (complexity_score / 200)  # Max 50% increase for complex designs
                     thread_costs = calculator.calculate_thread_cost(
                         design_data['thread_length_yards'],
                         quantity,
@@ -202,7 +223,7 @@ def main():
                     runtime = calculator.calculate_runtime(
                         design_data['stitch_count'],
                         thread_weight
-                    )
+                    ) * complexity_factor  # Adjust runtime based on complexity
 
                     # Display cost breakdown
                     st.subheader("Cost Breakdown")
@@ -214,6 +235,7 @@ def main():
                         st.metric("Bobbin Cost", f"${thread_costs['bobbin_cost']:.2f}")
                     with col3:
                         st.metric("Estimated Runtime", f"{runtime:.1f} min")
+                        st.caption("Includes complexity adjustment")
 
                     foam_costs = None
                     if use_foam:
@@ -246,7 +268,8 @@ def main():
                             "runtime": runtime,
                             "foam_used": use_foam,
                             "quantity": quantity,
-                            "thread_weight": thread_weight
+                            "thread_weight": thread_weight,
+                            "complexity_factor": complexity_factor
                         }
 
                         if use_foam and foam_costs:
