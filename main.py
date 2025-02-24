@@ -219,7 +219,7 @@ def main():
                             st.metric("Stitch Count", f"{design_data['stitch_count']:,}")
                             st.metric("Design Width", f"{design_data['width_mm']:.1f}mm")
                         with metrics_col2:
-                            st.metric("Color Changes", str(design_data['color_changes']))
+                            st.metric("Thread Length", f"{design_data['thread_length_yards']:.1f} yards")
                             st.metric("Design Height", f"{design_data['height_mm']:.1f}mm")
 
                         # Complexity Analysis
@@ -228,13 +228,6 @@ def main():
                         st.progress(complexity_score / 100)
                         st.write(f"Complexity Score: {complexity_score}/100")
                         st.info(analyzer.get_complexity_description(complexity_score))
-
-                        # Detailed metrics
-                        with st.expander("Detailed Complexity Metrics"):
-                            st.metric("Direction Changes", design_data['direction_changes'])
-                            st.metric("Density Score", f"{design_data['density_score']:.1f}/10")
-                            st.metric("Stitch Length Variance",
-                                     f"{design_data['stitch_length_variance']:.1f}/10")
 
                         # Thread weight selection
                         thread_weight = st.selectbox("Thread Weight", [40, 60])
@@ -252,7 +245,8 @@ def main():
                         fig = analyzer.generate_preview(
                             show_foam=use_foam,
                             foam_color=foam_color if use_foam else "#FF0000",
-                            thread_colors=thread_colors if thread_colors else None
+                            num_colors=num_colors,
+                            thread_colors=thread_colors
                         )
                         st.pyplot(fig)
 
@@ -300,7 +294,14 @@ def main():
                         st.caption(f"Using {thread_costs['total_bobbins']} bobbins")
                     with cost_col3:
                         total_cost = thread_costs['thread_cost'] + thread_costs['bobbin_cost']
-                        if use_foam and foam_costs:
+
+                        foam_costs = None
+                        if use_foam:
+                            foam_costs = calculator.calculate_foam_cost(
+                                design_data['width_mm'],
+                                design_data['height_mm'],
+                                quantity
+                            )
                             total_cost += foam_costs['total_cost']
                             st.metric("Foam Cost", f"${foam_costs['total_cost']:.2f}")
                             st.caption(f"Using {foam_costs['sheets_needed']} sheets")
@@ -338,7 +339,6 @@ def main():
                                     "foam_used": use_foam,
                                     "quantity": quantity,
                                     "thread_weight": thread_weight,
-                                    "complexity_factor": complexity_factor,
                                     "active_heads": active_heads
                                 }
 
