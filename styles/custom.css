@@ -1,0 +1,28 @@
+@import url('https://fonts.googleapis.com/css2?family=Helvetica:wght@400;700&display=swap');
+
+.stApp {
+    font-family: 'Helvetica', sans-serif;
+}
+
+.main {
+    padding: 2rem;
+}
+
+.stButton>button {
+    border-radius: 4px;
+    padding: 0.5rem 1rem;
+}
+
+.cost-card {
+    background-color: #f8f9fa;
+    padding: 1rem;
+    border-radius: 8px;
+    margin: 1rem 0;
+}
+
+.preview-container {
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    padding: 1rem;
+    margin: 1rem 0;
+}
