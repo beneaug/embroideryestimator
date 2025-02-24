@@ -140,17 +140,42 @@ def main():
         tab1, tab2 = st.tabs(["New Calculation", "History"])
 
         with tab1:
-            # Machine configuration
-            st.sidebar.subheader("Machine Configuration")
-            active_heads = st.sidebar.slider("Active Heads", 1, 15, 15, 
-                                          help="Number of active embroidery heads")
-            use_coloreel = st.sidebar.checkbox("Use Coloreel ITCU")
-            if use_coloreel:
-                st.sidebar.warning("Using Coloreel reduces maximum heads to 2")
-                active_heads = min(active_heads, 2)
+            # Machine Configuration Section
+            st.subheader("Machine Configuration")
+            config_col1, config_col2, config_col3 = st.columns(3)
+
+            with config_col1:
+                active_heads = st.number_input(
+                    "Active Heads",
+                    min_value=1,
+                    max_value=15,
+                    value=15,
+                    help="Number of active embroidery heads (1-15)"
+                )
+                st.caption("More active heads = faster production")
+
+            with config_col2:
+                use_coloreel = st.checkbox(
+                    "Use Coloreel ITCU",
+                    help="Enable Coloreel Instant Thread Coloring Units"
+                )
+                if use_coloreel:
+                    st.warning("⚠️ Coloreel mode limits maximum heads to 2")
+                    active_heads = min(active_heads, 2)
+
+            with config_col3:
+                st.write("Machine Status")
+                st.metric(
+                    "Production Capacity",
+                    f"{active_heads} heads",
+                    delta="Limited to 2" if use_coloreel else None,
+                    delta_color="off" if use_coloreel else "normal"
+                )
+
+            st.divider()
 
             # File upload
-            st.info("Please upload a DST or U01 file to analyze")
+            st.subheader("Design Upload")
             uploaded_file = st.file_uploader(
                 "Upload DST/U01 File",
                 type=["dst", "u01"],
