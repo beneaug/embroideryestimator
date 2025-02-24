@@ -67,32 +67,38 @@ class CostCalculator:
         # Base stitch rate based on thread weight
         rpm = 750 if thread_weight == 40 else 400
 
-        # Calculate time per piece in minutes
-        stitch_time = stitch_count / rpm
-
-        # Calculate cycles based on quantity and active heads
+        # Calculate pieces per cycle and total cycles
         pieces_per_cycle = min(active_heads, quantity)
         total_cycles = math.ceil(quantity / pieces_per_cycle)
+        remaining_pieces = quantity % pieces_per_cycle
+        last_cycle_pieces = remaining_pieces if remaining_pieces > 0 else pieces_per_cycle
 
-        # Calculate runtime components:
-        # 1. Hooping time for each piece
-        total_hooping_time = self.HOOPING_TIME * quantity
+        # Calculate time components per cycle
+        stitch_time = stitch_count / rpm  # Time to stitch one piece
+        hooping_time_per_cycle = self.HOOPING_TIME * pieces_per_cycle  # Time to hoop all pieces in a cycle
 
-        # 2. Stitch time (same for all pieces in a cycle as they run in parallel)
-        total_stitch_time = stitch_time * total_cycles
+        # Time per cycle is the maximum of stitching time and hooping time
+        cycle_time = max(stitch_time, hooping_time_per_cycle)
 
-        # 3. Buffer between cycles (5% of stitch time)
-        buffer_per_cycle = stitch_time * 0.05
-        total_buffer_time = buffer_per_cycle * (total_cycles - 1)  # No buffer after last cycle
+        # Calculate buffer time (5% of cycle time)
+        buffer_time = cycle_time * 0.05
 
-        # Total runtime
-        total_runtime = total_hooping_time + total_stitch_time + total_buffer_time
+        # Calculate last cycle time
+        last_cycle_hooping = self.HOOPING_TIME * last_cycle_pieces
+        last_cycle_time = max(stitch_time, last_cycle_hooping)
+
+        # Total runtime = full cycles with buffer + last cycle
+        total_runtime = cycle_time * (total_cycles - 1)  # Full cycles
+        total_runtime += buffer_time * (total_cycles - 1)  # Buffer between cycles
+        total_runtime += last_cycle_time  # Last cycle (no buffer needed after)
 
         return {
             "total_runtime": total_runtime,
-            "hooping_time": total_hooping_time,
             "stitch_time": stitch_time,
-            "buffer_per_cycle": buffer_per_cycle,
+            "hooping_time_per_cycle": hooping_time_per_cycle,
+            "cycle_time": cycle_time,
+            "buffer_time": buffer_time,
             "cycles": total_cycles,
-            "pieces_per_cycle": pieces_per_cycle
+            "pieces_per_cycle": pieces_per_cycle,
+            "last_cycle_pieces": last_cycle_pieces
         }

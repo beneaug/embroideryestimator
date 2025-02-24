@@ -198,7 +198,7 @@ def main():
                     # Color selection
                     st.subheader("Thread Colors")
                     num_colors = st.number_input("Number of Colors", 1, 15, 1,
-                                               help="Specify how many different thread colors are used")
+                                                  help="Specify how many different thread colors are used")
                     thread_colors = []
                     if num_colors > 0:
                         color_cols = st.columns(min(4, num_colors))
@@ -264,17 +264,18 @@ def main():
                     with prod_col1:
                         st.metric("Total Cycles", str(runtime_data['cycles']))
                         st.metric("Pieces per Cycle", str(runtime_data['pieces_per_cycle']))
-                        st.caption(f"Using {active_heads} heads")
+                        if runtime_data['last_cycle_pieces'] != runtime_data['pieces_per_cycle']:
+                            st.caption(f"Last cycle: {runtime_data['last_cycle_pieces']} pieces")
 
                     with prod_col2:
                         st.metric("Stitch Time", f"{runtime_data['stitch_time']:.1f} min")
-                        st.metric("Hooping Time", f"{runtime_data['hooping_time']:.1f} min")
-                        st.caption("45 seconds per piece")
+                        st.metric("Hooping Time/Cycle", f"{runtime_data['hooping_time_per_cycle']:.1f} min")
+                        st.caption("Operations run concurrently")
 
                     with prod_col3:
-                        st.metric("Buffer Time", f"{runtime_data['buffer_per_cycle']:.1f} min/cycle")
+                        st.metric("Cycle Time", f"{runtime_data['cycle_time']:.1f} min")
                         st.metric("Total Runtime", f"{runtime_data['total_runtime']:.1f} min")
-                        st.caption("Includes hooping and cycle buffers")
+                        st.caption(f"Includes {runtime_data['buffer_time']:.1f} min buffer between cycles")
 
                     # Cost Breakdown
                     st.subheader("Cost Breakdown")
