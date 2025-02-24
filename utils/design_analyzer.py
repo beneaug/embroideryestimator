@@ -11,8 +11,6 @@ class DesignAnalyzer:
         self.pattern = None
         self.dimensions = None
         self.stitch_count = 0
-        self.color_changes = 0
-        self.colors = ["#FF0000", "#00FF00", "#0000FF", "#FFFF00", "#FF00FF"]  # Default colors
 
     def analyze_file(self, file_data: bytes) -> Dict:
         """Analyze uploaded embroidery file and return design metrics"""
@@ -31,22 +29,19 @@ class DesignAnalyzer:
         except Exception as e:
             raise Exception(f"Error analyzing design: {str(e)}")
 
-    def _segment_by_color(self, stitches: np.ndarray) -> List[np.ndarray]:
-        """Segment stitches by color changes"""
+    def _segment_by_color(self, stitches: np.ndarray, num_colors: int) -> List[np.ndarray]:
+        """Segment stitches evenly by specified number of colors"""
+        if num_colors <= 0:
+            return [stitches]
+
+        # Split stitches into roughly equal segments
+        stitches_per_color = len(stitches) // num_colors
         segments = []
-        current_segment = []
-        current_command = None
 
-        for stitch in stitches:
-            x, y, command = stitch
-            if command != current_command and current_segment:
-                segments.append(np.array(current_segment))
-                current_segment = []
-            current_segment.append([x, y])
-            current_command = command
-
-        if current_segment:
-            segments.append(np.array(current_segment))
+        for i in range(num_colors):
+            start_idx = i * stitches_per_color
+            end_idx = start_idx + stitches_per_color if i < num_colors - 1 else len(stitches)
+            segments.append(stitches[start_idx:end_idx])
 
         return segments
 
@@ -116,10 +111,6 @@ class DesignAnalyzer:
         # Convert to yards (0.1mm to yards)
         thread_length_yards = thread_length * 0.1 / 914.4
 
-        # Count color changes
-        unique_commands = set(stitches[:, 2])
-        color_changes = len([cmd for cmd in unique_commands if cmd != pyembroidery.STITCH])
-
         # Calculate complexity metrics
         complexity_data = self._calculate_complexity_score(stitches)
 
@@ -128,11 +119,11 @@ class DesignAnalyzer:
             "height_mm": height_mm,
             "stitch_count": len(stitches),
             "thread_length_yards": thread_length_yards,
-            "color_changes": color_changes,
             **complexity_data
         }
 
-    def generate_preview(self, show_foam: bool = False, foam_color: str = "#FF0000", thread_colors: List[str] = None) -> plt.Figure:
+    def generate_preview(self, show_foam: bool = False, foam_color: str = "#FF0000", 
+                        num_colors: int = 1, thread_colors: List[str] = None) -> plt.Figure:
         """Generate preview of the design with optional foam overlay and color segments"""
         fig, ax = plt.subplots(figsize=(8, 8))
 
@@ -141,8 +132,9 @@ class DesignAnalyzer:
         stitches[:, :2] = -stitches[:, :2]
 
         # Plot stitches by color segments
-        segments = self._segment_by_color(stitches)
-        colors = thread_colors if thread_colors else self.colors
+        segments = self._segment_by_color(stitches, num_colors)
+        colors = thread_colors if thread_colors else ['#000000'] * num_colors
+
         for i, segment in enumerate(segments):
             color = colors[i % len(colors)]
             ax.plot(segment[:, 0], segment[:, 1], color=color, linewidth=0.5)

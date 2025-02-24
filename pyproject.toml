@@ -11,4 +11,5 @@ dependencies = [
     "reportlab>=4.3.1",
     "sqlalchemy>=2.0.38",
     "streamlit>=1.42.2",
+    "twilio>=9.4.6",
 ]

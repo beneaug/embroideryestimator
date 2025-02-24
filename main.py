@@ -195,15 +195,16 @@ def main():
                     design_data = analyzer.analyze_file(file_contents)
                     design_data['design_name'] = uploaded_file.name
 
-                    # Color selection for each color change
+                    # Color selection
+                    st.subheader("Thread Colors")
+                    num_colors = st.number_input("Number of Colors", 1, 15, 1,
+                                               help="Specify how many different thread colors are used")
                     thread_colors = []
-                    if design_data['color_changes'] > 0:
-                        st.subheader("Thread Colors")
-                        cols = st.columns(min(4, design_data['color_changes'] + 1))
-                        for i in range(design_data['color_changes'] + 1):
-                            with cols[i % 4]:
-                                color = st.color_picker(f"Color {i+1}", 
-                                                      analyzer.colors[i % len(analyzer.colors)])
+                    if num_colors > 0:
+                        color_cols = st.columns(min(4, num_colors))
+                        for i in range(num_colors):
+                            with color_cols[i % 4]:
+                                color = st.color_picker(f"Color {i+1}", "#000000")
                                 thread_colors.append(color)
 
                     # Display design preview and information in columns
@@ -232,8 +233,8 @@ def main():
                         with st.expander("Detailed Complexity Metrics"):
                             st.metric("Direction Changes", design_data['direction_changes'])
                             st.metric("Density Score", f"{design_data['density_score']:.1f}/10")
-                            st.metric("Stitch Length Variance", 
-                                    f"{design_data['stitch_length_variance']:.1f}/10")
+                            st.metric("Stitch Length Variance",
+                                     f"{design_data['stitch_length_variance']:.1f}/10")
 
                         # Thread weight selection
                         thread_weight = st.selectbox("Thread Weight", [40, 60])
@@ -255,13 +256,9 @@ def main():
                         )
                         st.pyplot(fig)
 
-                    # Calculate costs with complexity adjustment
-                    complexity_factor = 1 + (complexity_score / 200)  # Max 50% increase for complex designs
-                    thread_costs = calculator.calculate_thread_cost(
-                        design_data['thread_length_yards'],
-                        quantity,
-                        active_heads
-                    )
+                    # Production Information Section
+                    st.subheader("Production Information")
+                    prod_col1, prod_col2, prod_col3 = st.columns(3)
 
                     runtime_data = calculator.calculate_runtime(
                         design_data['stitch_count'],
@@ -270,28 +267,34 @@ def main():
                         active_heads
                     )
 
-                    # Display production info
-                    st.subheader("Production Information")
-                    prod_col1, prod_col2, prod_col3 = st.columns(3)
                     with prod_col1:
                         st.metric("Total Cycles", str(runtime_data['cycles']))
                         st.metric("Pieces per Cycle", str(runtime_data['pieces_per_cycle']))
-                        if runtime_data['last_cycle_pieces'] != runtime_data['pieces_per_cycle']:
-                            st.caption(f"Last cycle: {runtime_data['last_cycle_pieces']} pieces")
-                    with prod_col2:
-                        st.metric("Time per Piece", f"{runtime_data['time_per_piece']:.1f} min")
-                        st.metric("Time per Cycle", f"{runtime_data['time_per_cycle']:.1f} min")
-                    with prod_col3:
-                        st.metric("Cycle Buffer", f"{runtime_data['buffer_per_cycle']:.1f} min")
-                        st.metric("Total Runtime", f"{runtime_data['total_runtime']:.1f} min")
-                        st.caption("Includes 15% buffer between cycles")
+                        st.caption(f"Using {active_heads} heads")
 
-                    # Display cost breakdown
+                    with prod_col2:
+                        st.metric("Stitch Time", f"{runtime_data['stitch_time']:.1f} min")
+                        st.metric("Hooping Time", f"{runtime_data['hooping_time']:.1f} min")
+                        st.caption("45 seconds per piece")
+
+                    with prod_col3:
+                        st.metric("Buffer Time", f"{runtime_data['buffer_per_cycle']:.1f} min/cycle")
+                        st.metric("Total Runtime", f"{runtime_data['total_runtime']:.1f} min")
+                        st.caption("Includes hooping and cycle buffers")
+
+                    # Cost Breakdown
                     st.subheader("Cost Breakdown")
+                    thread_costs = calculator.calculate_thread_cost(
+                        design_data['thread_length_yards'],
+                        quantity,
+                        active_heads
+                    )
+
                     cost_col1, cost_col2, cost_col3 = st.columns(3)
                     with cost_col1:
                         st.metric("Thread Cost", f"${thread_costs['thread_cost']:.2f}")
-                        st.caption(f"Using {thread_costs['total_spools']} spools")
+                        st.caption(f"{thread_costs['spools_per_head']} spools per head")
+                        st.caption(f"Total: {thread_costs['total_spools']} spools")
                     with cost_col2:
                         st.metric("Bobbin Cost", f"${thread_costs['bobbin_cost']:.2f}")
                         st.caption(f"Using {thread_costs['total_bobbins']} bobbins")
