@@ -12,6 +12,7 @@ class DesignAnalyzer:
         self.dimensions = None
         self.stitch_count = 0
         self.color_changes = 0
+        self.colors = ["#FF0000", "#00FF00", "#0000FF", "#FFFF00", "#FF00FF"]  # Default colors
 
     def analyze_file(self, file_data: bytes) -> Dict:
         """Analyze uploaded embroidery file and return design metrics"""
@@ -29,6 +30,25 @@ class DesignAnalyzer:
             return self._calculate_metrics()
         except Exception as e:
             raise Exception(f"Error analyzing design: {str(e)}")
+
+    def _segment_by_color(self, stitches: np.ndarray) -> List[np.ndarray]:
+        """Segment stitches by color changes"""
+        segments = []
+        current_segment = []
+        current_command = None
+
+        for stitch in stitches:
+            x, y, command = stitch
+            if command != current_command and current_segment:
+                segments.append(np.array(current_segment))
+                current_segment = []
+            current_segment.append([x, y])
+            current_command = command
+
+        if current_segment:
+            segments.append(np.array(current_segment))
+
+        return segments
 
     def _calculate_complexity_score(self, stitches: np.ndarray) -> Dict:
         """Calculate complexity metrics for the design"""
@@ -96,6 +116,10 @@ class DesignAnalyzer:
         # Convert to yards (0.1mm to yards)
         thread_length_yards = thread_length * 0.1 / 914.4
 
+        # Count color changes
+        unique_commands = set(stitches[:, 2])
+        color_changes = len([cmd for cmd in unique_commands if cmd != pyembroidery.STITCH])
+
         # Calculate complexity metrics
         complexity_data = self._calculate_complexity_score(stitches)
 
@@ -104,17 +128,24 @@ class DesignAnalyzer:
             "height_mm": height_mm,
             "stitch_count": len(stitches),
             "thread_length_yards": thread_length_yards,
-            "color_changes": len(set(stitches[:, 2])) - 1,
+            "color_changes": color_changes,
             **complexity_data
         }
 
-    def generate_preview(self, show_foam: bool = False, foam_color: str = "#FF0000") -> plt.Figure:
-        """Generate preview of the design with optional foam overlay"""
+    def generate_preview(self, show_foam: bool = False, foam_color: str = "#FF0000", thread_colors: List[str] = None) -> plt.Figure:
+        """Generate preview of the design with optional foam overlay and color segments"""
         fig, ax = plt.subplots(figsize=(8, 8))
 
-        # Plot stitches
         stitches = np.array(self.pattern.stitches)
-        ax.plot(stitches[:, 0], stitches[:, 1], 'k-', linewidth=0.5)
+        # Rotate 180 degrees
+        stitches[:, :2] = -stitches[:, :2]
+
+        # Plot stitches by color segments
+        segments = self._segment_by_color(stitches)
+        colors = thread_colors if thread_colors else self.colors
+        for i, segment in enumerate(segments):
+            color = colors[i % len(colors)]
+            ax.plot(segment[:, 0], segment[:, 1], color=color, linewidth=0.5)
 
         if show_foam:
             # Add foam overlay with padding

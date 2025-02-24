@@ -43,7 +43,8 @@ def save_job_to_db(
     use_foam: bool = False,
     use_coloreel: bool = False,
     quantity: int = 1,
-    thread_weight: int = 40
+    thread_weight: int = 40,
+    active_heads: int = 15
 ) -> Job:
     """Save job details to database"""
     try:
@@ -57,7 +58,8 @@ def save_job_to_db(
             quantity=quantity,
             thread_weight=thread_weight,
             use_foam=use_foam,
-            use_coloreel=use_coloreel
+            use_coloreel=use_coloreel,
+            active_heads=active_heads
         )
         db.add(job)
         db.flush()
@@ -140,8 +142,12 @@ def main():
         with tab1:
             # Machine configuration
             st.sidebar.subheader("Machine Configuration")
+            active_heads = st.sidebar.slider("Active Heads", 1, 15, 15, 
+                                          help="Number of active embroidery heads")
             use_coloreel = st.sidebar.checkbox("Use Coloreel ITCU")
-            heads = 2 if use_coloreel else 15
+            if use_coloreel:
+                st.sidebar.warning("Using Coloreel reduces maximum heads to 2")
+                active_heads = min(active_heads, 2)
 
             # File upload
             st.info("Please upload a DST or U01 file to analyze")
@@ -163,6 +169,17 @@ def main():
                     # Analyze design
                     design_data = analyzer.analyze_file(file_contents)
                     design_data['design_name'] = uploaded_file.name
+
+                    # Color selection for each color change
+                    thread_colors = []
+                    if design_data['color_changes'] > 0:
+                        st.subheader("Thread Colors")
+                        cols = st.columns(min(4, design_data['color_changes'] + 1))
+                        for i in range(design_data['color_changes'] + 1):
+                            with cols[i % 4]:
+                                color = st.color_picker(f"Color {i+1}", 
+                                                      analyzer.colors[i % len(analyzer.colors)])
+                                thread_colors.append(color)
 
                     # Display design preview and information in columns
                     col1, col2 = st.columns(2)
@@ -208,7 +225,8 @@ def main():
                         st.subheader("Design Preview")
                         fig = analyzer.generate_preview(
                             show_foam=use_foam,
-                            foam_color=foam_color if use_foam else "#FF0000"
+                            foam_color=foam_color if use_foam else "#FF0000",
+                            thread_colors=thread_colors if thread_colors else None
                         )
                         st.pyplot(fig)
 
@@ -217,25 +235,41 @@ def main():
                     thread_costs = calculator.calculate_thread_cost(
                         design_data['thread_length_yards'],
                         quantity,
-                        heads
+                        active_heads
                     )
 
-                    runtime = calculator.calculate_runtime(
+                    runtime_data = calculator.calculate_runtime(
                         design_data['stitch_count'],
-                        thread_weight
-                    ) * complexity_factor  # Adjust runtime based on complexity
+                        thread_weight,
+                        quantity,
+                        active_heads
+                    )
+
+                    # Display production info
+                    st.subheader("Production Information")
+                    prod_col1, prod_col2, prod_col3 = st.columns(3)
+                    with prod_col1:
+                        st.metric("Total Cycles", str(runtime_data['cycles']))
+                        st.metric("Pieces per Cycle", str(runtime_data['pieces_per_cycle']))
+                    with prod_col2:
+                        st.metric("Time per Cycle", f"{runtime_data['time_per_cycle']:.1f} min")
+                        st.metric("Buffer Time", f"{runtime_data['buffer_per_cycle']:.1f} min")
+                    with prod_col3:
+                        st.metric("Total Runtime", f"{runtime_data['total_runtime']:.1f} min")
+                        st.caption("Includes complexity and cycle buffer adjustments")
 
                     # Display cost breakdown
                     st.subheader("Cost Breakdown")
-                    col1, col2, col3 = st.columns(3)
-
-                    with col1:
+                    cost_col1, cost_col2, cost_col3 = st.columns(3)
+                    with cost_col1:
                         st.metric("Thread Cost", f"${thread_costs['thread_cost']:.2f}")
-                    with col2:
+                        st.caption(f"Using {thread_costs['total_spools']} spools")
+                    with cost_col2:
                         st.metric("Bobbin Cost", f"${thread_costs['bobbin_cost']:.2f}")
-                    with col3:
-                        st.metric("Estimated Runtime", f"{runtime:.1f} min")
-                        st.caption("Includes complexity adjustment")
+                        st.caption(f"Using {thread_costs['total_bobbins']} bobbins")
+                    with cost_col3:
+                        total_cost = thread_costs['thread_cost'] + thread_costs['bobbin_cost']
+                        st.metric("Base Cost", f"${total_cost:.2f}")
 
                     foam_costs = None
                     if use_foam:
@@ -245,6 +279,9 @@ def main():
                             quantity
                         )
                         st.metric("Foam Cost", f"${foam_costs['total_cost']:.2f}")
+                        total_cost += foam_costs['total_cost']
+
+                    st.metric("Total Cost", f"${total_cost:.2f}")
 
                     # Save calculation
                     if st.button("Save Calculation"):
@@ -256,7 +293,8 @@ def main():
                             use_foam,
                             use_coloreel,
                             quantity,
-                            thread_weight
+                            thread_weight,
+                            active_heads
                         )
                         st.success("Calculation saved!")
 
@@ -265,11 +303,12 @@ def main():
                         report_data = {
                             **design_data,
                             **thread_costs,
-                            "runtime": runtime,
+                            **runtime_data,
                             "foam_used": use_foam,
                             "quantity": quantity,
                             "thread_weight": thread_weight,
-                            "complexity_factor": complexity_factor
+                            "complexity_factor": complexity_factor,
+                            "active_heads": active_heads
                         }
 
                         if use_foam and foam_costs:

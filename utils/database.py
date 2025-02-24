@@ -6,7 +6,7 @@ from datetime import datetime
 
 # Get database URL from environment
 DATABASE_URL = os.getenv('DATABASE_URL')
-if DATABASE_URL.startswith("postgres://"):
+if DATABASE_URL and DATABASE_URL.startswith("postgres://"):
     DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
 
 # Create engine and session
@@ -29,6 +29,7 @@ class Job(Base):
     thread_weight = Column(Integer)
     use_foam = Column(Boolean, default=False)
     use_coloreel = Column(Boolean, default=False)
+    active_heads = Column(Integer, default=15)
 
     # Complexity metrics
     complexity_score = Column(Float)
