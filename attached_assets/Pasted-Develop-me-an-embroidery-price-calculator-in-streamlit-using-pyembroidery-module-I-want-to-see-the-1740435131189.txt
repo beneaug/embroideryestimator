@@ -1,0 +1,13 @@
+Develop me an embroidery price calculator in streamlit using pyembroidery module.  I want to see the cost of goods used per piece, and cost of service. what will you need from me to bring this project to fruition? I also want the website to be polished, and modern, with an emphasis on a clean appearnace
+
+1 factor in top thread used, referencing madeirausa polyneon prices, bobbin thread used, estimated stitchout time. I envision a preview of the embroidery displayed with pyembroidery, and if the user plans to use foam for 3d puff, the program should automatically be able to add a half inch to the design area, and calculate how many pieces of foam can be cut from an 18x12in sheet, how many sheets will be needed, and the cost of the those sheets added to the cost of goods, referencing madeirausa 3mm bodybuilder foam prices. Thats how in-depth and sophisticated i want this program to be. For now, we will not be taking into account labor, machine time, or overhead, but build with modularity so these features can possibly be added in the future. User will first select from a range of frequently embroidered garments (caps, sweatpants/sweatshirt, tote bag, etc), as multiple garment types may be in a single job. then, the user submits a .dst or .u01 file for each garment type. user will enter quantities of all unique garment types. The outputs i will need are a detailed cost breakdown per garment type, with gross and individual per piece cost. any relevant visual charts would be useful. pyembroidery should parse the .dst file for ANY useful information and take it into account. Think hard about any smart unconvential ways it can be used. 
+
+Madeira polyneon thread price per 5500 yd spool is $9.69, per 1100yd spool is $3.19, a sheet of 3mm foam is $2.45. we are not taking into account garment prices whatsoever. 
+
+assume a runtime speed of 750 rpm if/when using 40 wt and a 400rpm runtime speed if/when using 60wt
+
+calculate cost using top thread consumed (with 5% buffer) times quantity of garments divided by 15 heads. This is to be built around a barudan beks-s1515c, with two coloreel ITCU units, it'd be nice to display this information as card somewhere.
+
+font preference helvetica/helvertica bold
+
+The results/summary should be able tp be exported as a pdf in a well-designed "worksheet" style, with information clearly consolidated and displayed.
