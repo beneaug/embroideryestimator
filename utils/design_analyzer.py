@@ -45,6 +45,23 @@ class DesignAnalyzer:
 
         return segments
 
+    def _calculate_density_map(self, stitches: np.ndarray, grid_size: int = 50) -> np.ndarray:
+        """Calculate stitch density map"""
+        x_coords = stitches[:, 0]
+        y_coords = stitches[:, 1]
+
+        x_min, x_max = np.min(x_coords), np.max(x_coords)
+        y_min, y_max = np.min(y_coords), np.max(y_coords)
+
+        # Create 2D histogram
+        density_map, _, _ = np.histogram2d(
+            x_coords, y_coords,
+            bins=grid_size,
+            range=[[x_min, x_max], [y_min, y_max]]
+        )
+
+        return density_map
+
     def _calculate_complexity_score(self, stitches: np.ndarray) -> Dict:
         """Calculate complexity metrics for the design"""
         if len(stitches) < 2:
@@ -124,20 +141,20 @@ class DesignAnalyzer:
 
     def generate_preview(self, show_foam: bool = False, foam_color: str = "#FF0000", 
                         num_colors: int = 1, thread_colors: List[str] = None) -> plt.Figure:
-        """Generate preview of the design with optional foam overlay and color segments"""
-        fig, ax = plt.subplots(figsize=(8, 8))
+        """Generate preview of the design with density map and optional foam overlay"""
+        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(16, 8))
 
         stitches = np.array(self.pattern.stitches)
         # Rotate 180 degrees
         stitches[:, :2] = -stitches[:, :2]
 
-        # Plot stitches by color segments
+        # Plot stitches by color segments in first subplot
         segments = self._segment_by_color(stitches, num_colors)
         colors = thread_colors if thread_colors else ['#000000'] * num_colors
 
         for i, segment in enumerate(segments):
             color = colors[i % len(colors)]
-            ax.plot(segment[:, 0], segment[:, 1], color=color, linewidth=0.5)
+            ax1.plot(segment[:, 0], segment[:, 1], color=color, linewidth=0.5)
 
         if show_foam:
             # Add foam overlay with padding
@@ -150,10 +167,20 @@ class DesignAnalyzer:
                                max_y - min_y + 2*padding,
                                facecolor=foam_color,
                                alpha=0.3)
-            ax.add_patch(rect)
+            ax1.add_patch(rect)
 
-        ax.set_aspect('equal')
-        ax.axis('off')
+        ax1.set_aspect('equal')
+        ax1.axis('off')
+        ax1.set_title("Design Preview")
+
+        # Plot density heatmap in second subplot
+        density_map = self._calculate_density_map(stitches)
+        im = ax2.imshow(density_map.T, cmap='hot', interpolation='nearest', origin='lower')
+        plt.colorbar(im, ax=ax2, label='Stitch Density')
+        ax2.set_title("Stitch Density Heatmap")
+        ax2.axis('off')
+
+        plt.tight_layout()
         return fig
 
     def get_complexity_description(self, complexity_score: float) -> str:

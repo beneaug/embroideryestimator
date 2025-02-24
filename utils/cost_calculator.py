@@ -15,7 +15,7 @@ class CostCalculator:
         self.prices = ThreadPrices()
         self.HOOPING_TIME = 45/60  # 45 seconds converted to minutes
 
-    def calculate_thread_cost(self, thread_length: float, quantity: int, active_heads: int = 15) -> Dict:
+    def calculate_thread_cost(self, thread_length: float, quantity: int, active_heads: int = 15, num_colors: int = 1) -> Dict:
         """Calculate thread costs including buffer"""
         pieces_per_cycle = min(active_heads, quantity)
         total_cycles = math.ceil(quantity / pieces_per_cycle)
@@ -24,8 +24,9 @@ class CostCalculator:
         thread_per_piece = thread_length * 1.05
         total_thread = thread_per_piece * quantity
 
-        # Calculate spools needed per head
-        spools_per_head = math.ceil(total_thread / (active_heads * 5500))
+        # Calculate spools needed per head based on colors
+        colors_per_head = math.ceil(num_colors / active_heads)  # Distribute colors across heads
+        spools_per_head = math.ceil((total_thread / active_heads / 5500) * colors_per_head)
         thread_cost = spools_per_head * self.prices.POLYNEON_5500 * active_heads
 
         # Calculate bobbin usage
@@ -37,6 +38,7 @@ class CostCalculator:
             "bobbin_cost": bobbin_cost,
             "total_spools": spools_per_head * active_heads,
             "spools_per_head": spools_per_head,
+            "colors_per_head": colors_per_head,
             "total_bobbins": bobbins_needed,
             "cycles": total_cycles,
             "pieces_per_cycle": pieces_per_cycle
