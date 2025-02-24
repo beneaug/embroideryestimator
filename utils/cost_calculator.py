@@ -68,19 +68,27 @@ class CostCalculator:
         # Calculate time per piece in minutes
         time_per_piece = stitch_count / rpm
 
-        # Calculate cycles
+        # Calculate cycles based on quantity and active heads
         pieces_per_cycle = min(active_heads, quantity)
         total_cycles = math.ceil(quantity / pieces_per_cycle)
+        remaining_pieces = quantity % pieces_per_cycle
+        last_cycle_pieces = remaining_pieces if remaining_pieces > 0 else pieces_per_cycle
 
-        # Add 15% buffer between cycles
-        cycle_time = time_per_piece * pieces_per_cycle
-        buffer_time = cycle_time * 0.15
-        total_time = (cycle_time + buffer_time) * total_cycles
+        # Calculate cycle times
+        full_cycle_time = time_per_piece * pieces_per_cycle
+        last_cycle_time = time_per_piece * last_cycle_pieces
+        buffer_time = full_cycle_time * 0.15  # 15% buffer between cycles
+
+        # Calculate total time
+        total_time = (full_cycle_time + buffer_time) * (total_cycles - 1)  # Full cycles with buffer
+        total_time += last_cycle_time  # Add last cycle (no buffer needed after last cycle)
 
         return {
             "total_runtime": total_time,
-            "time_per_cycle": cycle_time,
+            "time_per_piece": time_per_piece,
+            "time_per_cycle": full_cycle_time,
             "buffer_per_cycle": buffer_time,
             "cycles": total_cycles,
-            "pieces_per_cycle": pieces_per_cycle
+            "pieces_per_cycle": pieces_per_cycle,
+            "last_cycle_pieces": last_cycle_pieces
         }

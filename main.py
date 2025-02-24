@@ -276,12 +276,15 @@ def main():
                     with prod_col1:
                         st.metric("Total Cycles", str(runtime_data['cycles']))
                         st.metric("Pieces per Cycle", str(runtime_data['pieces_per_cycle']))
+                        if runtime_data['last_cycle_pieces'] != runtime_data['pieces_per_cycle']:
+                            st.caption(f"Last cycle: {runtime_data['last_cycle_pieces']} pieces")
                     with prod_col2:
+                        st.metric("Time per Piece", f"{runtime_data['time_per_piece']:.1f} min")
                         st.metric("Time per Cycle", f"{runtime_data['time_per_cycle']:.1f} min")
-                        st.metric("Buffer Time", f"{runtime_data['buffer_per_cycle']:.1f} min")
                     with prod_col3:
+                        st.metric("Cycle Buffer", f"{runtime_data['buffer_per_cycle']:.1f} min")
                         st.metric("Total Runtime", f"{runtime_data['total_runtime']:.1f} min")
-                        st.caption("Includes complexity and cycle buffer adjustments")
+                        st.caption("Includes 15% buffer between cycles")
 
                     # Display cost breakdown
                     st.subheader("Cost Breakdown")
@@ -294,58 +297,61 @@ def main():
                         st.caption(f"Using {thread_costs['total_bobbins']} bobbins")
                     with cost_col3:
                         total_cost = thread_costs['thread_cost'] + thread_costs['bobbin_cost']
-                        st.metric("Base Cost", f"${total_cost:.2f}")
-
-                    foam_costs = None
-                    if use_foam:
-                        foam_costs = calculator.calculate_foam_cost(
-                            design_data['width_mm'],
-                            design_data['height_mm'],
-                            quantity
-                        )
-                        st.metric("Foam Cost", f"${foam_costs['total_cost']:.2f}")
-                        total_cost += foam_costs['total_cost']
-
-                    st.metric("Total Cost", f"${total_cost:.2f}")
-
-                    # Save calculation
-                    if st.button("Save Calculation"):
-                        job = save_job_to_db(
-                            db,
-                            design_data,
-                            thread_costs,
-                            foam_costs,
-                            use_foam,
-                            use_coloreel,
-                            quantity,
-                            thread_weight,
-                            active_heads
-                        )
-                        st.success("Calculation saved!")
-
-                    # Export PDF
-                    if st.button("Export PDF Report"):
-                        report_data = {
-                            **design_data,
-                            **thread_costs,
-                            **runtime_data,
-                            "foam_used": use_foam,
-                            "quantity": quantity,
-                            "thread_weight": thread_weight,
-                            "complexity_factor": complexity_factor,
-                            "active_heads": active_heads
-                        }
-
                         if use_foam and foam_costs:
-                            report_data.update(foam_costs)
+                            total_cost += foam_costs['total_cost']
+                            st.metric("Foam Cost", f"${foam_costs['total_cost']:.2f}")
+                            st.caption(f"Using {foam_costs['sheets_needed']} sheets")
+                        st.metric("Total Cost", f"${total_cost:.2f}")
 
-                        pdf_bytes = pdf_gen.generate_report(report_data)
-                        st.download_button(
-                            "Download Report",
-                            pdf_bytes,
-                            "embroidery_cost_report.pdf",
-                            "application/pdf"
-                        )
+                    # Export options in a clean container
+                    st.container()
+                    export_col1, export_col2 = st.columns(2)
+
+                    with export_col1:
+                        if st.button("💾 Save Calculation", use_container_width=True):
+                            try:
+                                job = save_job_to_db(
+                                    db,
+                                    design_data,
+                                    thread_costs,
+                                    foam_costs,
+                                    use_foam,
+                                    use_coloreel,
+                                    quantity,
+                                    thread_weight,
+                                    active_heads
+                                )
+                                st.success("✅ Calculation saved successfully!")
+                            except Exception as e:
+                                st.error(f"Error saving calculation: {str(e)}")
+
+                    with export_col2:
+                        if st.button("📄 Export PDF Report", use_container_width=True):
+                            try:
+                                report_data = {
+                                    **design_data,
+                                    **thread_costs,
+                                    **runtime_data,
+                                    "foam_used": use_foam,
+                                    "quantity": quantity,
+                                    "thread_weight": thread_weight,
+                                    "complexity_factor": complexity_factor,
+                                    "active_heads": active_heads
+                                }
+
+                                if use_foam and foam_costs:
+                                    report_data.update(foam_costs)
+
+                                pdf_bytes = pdf_gen.generate_report(report_data)
+                                st.download_button(
+                                    "📥 Download Report",
+                                    pdf_bytes,
+                                    f"embroidery_cost_report_{design_data['design_name']}.pdf",
+                                    "application/pdf",
+                                    use_container_width=True
+                                )
+                            except Exception as e:
+                                st.error(f"Error generating PDF: {str(e)}")
 
                 except Exception as e:
                     logger.error(f"Error processing file: {str(e)}")
