@@ -282,15 +282,13 @@ def main():
                     thread_costs = calculator.calculate_thread_cost(
                         design_data['thread_length_yards'],
                         quantity,
-                        active_heads,
-                        num_colors
+                        active_heads
                     )
 
                     cost_col1, cost_col2, cost_col3 = st.columns(3)
                     with cost_col1:
                         st.metric("Thread Cost", f"${thread_costs['thread_cost']:.2f}")
                         st.caption(f"{thread_costs['spools_per_head']} spools per head")
-                        st.caption(f"{thread_costs['colors_per_head']} colors per head")
                         st.caption(f"Total: {thread_costs['total_spools']} spools")
                     with cost_col2:
                         st.metric("Bobbin Cost", f"${thread_costs['bobbin_cost']:.2f}")
