@@ -48,18 +48,27 @@ def save_job_to_db(
 ) -> Job:
     """Save job details to database"""
     try:
+        # Convert NumPy values to native Python types
+        thread_length = float(design_data['thread_length_yards'])
+        width = float(design_data['width_mm'])
+        height = float(design_data['height_mm'])
+
         # Create job record
         job = Job(
             design_name=design_data.get('design_name', 'Untitled'),
-            stitch_count=design_data['stitch_count'],
-            thread_length_yards=design_data['thread_length_yards'],
-            width_mm=design_data['width_mm'],
-            height_mm=design_data['height_mm'],
+            stitch_count=int(design_data['stitch_count']),
+            thread_length_yards=thread_length,
+            width_mm=width,
+            height_mm=height,
             quantity=quantity,
             thread_weight=thread_weight,
             use_foam=use_foam,
             use_coloreel=use_coloreel,
-            active_heads=active_heads
+            active_heads=active_heads,
+            complexity_score=float(design_data.get('complexity_score', 0)) if design_data.get('complexity_score') is not None else None,
+            direction_changes=int(design_data.get('direction_changes', 0)) if design_data.get('direction_changes') is not None else None,
+            density_score=float(design_data.get('density_score', 0)) if design_data.get('density_score') is not None else None,
+            stitch_length_variance=float(design_data.get('stitch_length_variance', 0)) if design_data.get('stitch_length_variance') is not None else None
         )
         db.add(job)
         db.flush()

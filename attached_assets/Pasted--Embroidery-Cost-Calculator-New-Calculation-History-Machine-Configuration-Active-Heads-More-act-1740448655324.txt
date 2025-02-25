@@ -1,0 +1,86 @@
+
+Embroidery Cost Calculator
+
+New Calculation
+
+History
+Machine Configuration
+Active Heads
+
+
+
+More active heads = faster production
+
+Machine Status
+
+Production Capacity
+15 heads
+Design Upload
+Upload DST/U01 File
+
+Drag and drop file here
+Limit 200MB per file • DST, U01
+23405_8cl_MT_CC Snake.DST
+50.8KB
+Thread Colors
+Number of Colors
+
+
+
+Color 1
+Design Information
+Stitch Count
+16,778
+Design Width
+66.4mm
+Thread Length
+38.4 yards
+Design Height
+80.6mm
+Complexity Analysis
+Complexity Score: 74.61/100
+
+Very complex design with high stitch density and technical challenges
+
+Thread Weight
+40
+
+Quantity
+
+
+
+Design Preview
+0
+Production Information
+Total Cycles
+1
+Pieces per Cycle
+1
+Stitch Time
+22.4 min
+Hooping Time/Cycle
+0.8 min
+Operations run concurrently
+
+Cycle Time
+22.4 min
+Total Runtime
+22.4 min
+Includes 1.1 min buffer between cycles
+
+Cost Breakdown
+Thread Cost
+$145.35
+1 spools per head (1 colors)
+
+Total: 15 spools
+
+Bobbin Cost
+$0.25
+Using 1 bobbins
+
+Total Cost
+$145.60
+Error saving calculation: (psycopg2.errors.InvalidSchemaName) schema "np" does not exist LINE 1: ...'::timestamp, '23405_8cl_MT_CC Snake.DST', 16778, np.float64... ^
+
+[SQL: INSERT INTO jobs (created_at, design_name, stitch_count, thread_length_yards, width_mm, height_mm, quantity, thread_weight, use_foam, use_coloreel, active_heads, complexity_score, direction_changes, density_score, stitch_length_variance) VALUES (%(created_at)s, %(design_name)s, %(stitch_count)s, %(thread_length_yards)s, %(width_mm)s, %(height_mm)s, %(quantity)s, %(thread_weight)s, %(use_foam)s, %(use_coloreel)s, %(active_heads)s, %(complexity_score)s, %(direction_changes)s, %(density_score)s, %(stitch_length_variance)s) RETURNING jobs.id] [parameters: {'created_at': datetime.datetime(2025, 2, 25, 1, 57, 18, 229177), 'design_name': '23405_8cl_MT_CC Snake.DST', 'stitch_count': 16778, 'thread_length_yards': np.float64(38.40983220209355), 'width_mm': np.float64(66.4), 'height_mm': np.float64(80.60000000000001), 'quantity': 1, 'thread_weight': 40, 'use_foam': False, 'use_coloreel': False, 'active_heads': 15, 'complexity_score': None, 'direction_changes': None, 'density_score': None, 'stitch_length_variance': None}] (Background on this error at: https://sqlalche.me/e/20/f405)
