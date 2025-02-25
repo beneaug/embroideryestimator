@@ -11,19 +11,29 @@ import matplotlib.pyplot as plt
 class PDFGenerator:
     def __init__(self):
         self.styles = getSampleStyleSheet()
+        # Modern styling for headings
+        self.styles.add(ParagraphStyle(
+            name='MainTitle',
+            parent=self.styles['Heading1'],
+            fontSize=24,
+            spaceAfter=30,
+            textColor=colors.HexColor('#1A237E'),
+            alignment=1  # Center alignment
+        ))
         self.styles.add(ParagraphStyle(
             name='Section',
             parent=self.styles['Heading2'],
-            fontSize=14,
+            fontSize=16,
             spaceAfter=16,
-            textColor=colors.HexColor('#2E4057')
+            textColor=colors.HexColor('#2E4057'),
+            spaceBefore=20
         ))
         self.styles.add(ParagraphStyle(
-            name='Body',
+            name='Metric',
             parent=self.styles['Normal'],
-            fontSize=10,
-            leading=14,
-            spaceAfter=8
+            fontSize=12,
+            leading=16,
+            textColor=colors.HexColor('#1A237E')
         ))
 
     def generate_report(self, data: dict) -> bytes:
@@ -32,91 +42,66 @@ class PDFGenerator:
         doc = SimpleDocTemplate(
             buffer, 
             pagesize=letter,
-            topMargin=0.75*inch,
-            bottomMargin=0.75*inch,
-            leftMargin=0.75*inch,
-            rightMargin=0.75*inch
+            topMargin=0.5*inch,
+            bottomMargin=0.5*inch,
+            leftMargin=0.5*inch,
+            rightMargin=0.5*inch
         )
         elements = []
 
-        # Add header
-        self._add_header(elements)
-
-        # Add design details
-        self._add_design_details(elements, data)
-
-        # Add production details
-        self._add_production_details(elements, data)
-
-        # Add cost breakdown
-        self._add_cost_breakdown(elements, data)
-
-        # Add complexity analysis
-        if 'complexity_score' in data:
-            self._add_complexity_analysis(elements, data)
-
-        # Generate PDF
-        doc.build(elements)
-        buffer.seek(0)
-        return buffer.getvalue()
-
-    def _add_header(self, elements):
         # Add title
-        title_style = ParagraphStyle(
-            'Title',
-            parent=self.styles['Heading1'],
-            fontSize=24,
-            spaceAfter=30,
-            textColor=colors.HexColor('#1A237E')
-        )
-        elements.append(Paragraph("Embroidery Cost Analysis", title_style))
-        elements.append(Spacer(1, 20))
+        elements.append(Paragraph("Embroidery Design Analysis", self.styles['MainTitle']))
+        elements.append(Spacer(1, 0.2*inch))
 
-    def _add_design_details(self, elements, data):
+        # Add design preview if available
+        if 'design_preview' in data:
+            img = Image(data['design_preview'])
+            img.drawHeight = 3*inch
+            img.drawWidth = 4*inch
+            elements.append(img)
+            elements.append(Spacer(1, 0.3*inch))
+
+        # Design Information Section
         elements.append(Paragraph("Design Specifications", self.styles['Section']))
-
-        # Create a table for design details
         design_data = [
-            ['Dimension', 'Value'],
-            ['Design Name', data.get('design_name', 'Untitled')],
-            ['Width × Height', f"{data['width_mm']:.1f}mm × {data['height_mm']:.1f}mm"],
-            ['Stitch Count', f"{data['stitch_count']:,}"],
-            ['Thread Length', f"{data['thread_length_yards']:.1f} yards"],
-            ['Color Changes', str(data.get('color_changes', 'N/A'))]
+            ['Metric', 'Value', 'Metric', 'Value'],
+            ['Design Name', data.get('design_name', 'Untitled'), 'Stitch Count', f"{data['stitch_count']:,}"],
+            ['Dimensions', f"{data['width_mm']:.1f}mm × {data['height_mm']:.1f}mm", 'Thread Length', f"{data['thread_length_yards']:.1f} yards"],
+            ['Thread Weight', f"{data.get('thread_weight', 40)}wt", 'Color Changes', str(data.get('color_changes', 'N/A'))]
         ]
-
-        table = Table(design_data, colWidths=[2*inch, 3*inch])
+        table = Table(design_data, colWidths=[1.5*inch, 2*inch, 1.5*inch, 2*inch])
         table.setStyle(self._get_table_style())
         elements.append(table)
-        elements.append(Spacer(1, 20))
 
-    def _add_production_details(self, elements, data):
-        elements.append(Paragraph("Production Information", self.styles['Section']))
+        # Complexity Analysis
+        if 'complexity_score' in data:
+            elements.append(Paragraph("Design Complexity", self.styles['Section']))
+            complexity_data = [
+                ['Metric', 'Score', 'Metric', 'Score'],
+                ['Overall Complexity', f"{data['complexity_score']:.1f}/100", 'Direction Changes', str(data['direction_changes'])],
+                ['Density Score', f"{data['density_score']:.1f}/10", 'Stitch Length Variance', f"{data['stitch_length_variance']:.1f}/10"]
+            ]
+            table = Table(complexity_data, colWidths=[1.5*inch, 2*inch, 1.5*inch, 2*inch])
+            table.setStyle(self._get_table_style())
+            elements.append(table)
 
+        # Production Information
+        elements.append(Paragraph("Production Details", self.styles['Section']))
         prod_data = [
-            ['Parameter', 'Value'],
-            ['Quantity', str(data['quantity'])],
-            ['Active Heads', str(data.get('active_heads', 15))],
-            ['Pieces per Cycle', str(data['pieces_per_cycle'])],
-            ['Total Cycles', str(data['cycles'])],
-            ['Time per Cycle', f"{data['time_per_cycle']:.1f} min"],
-            ['Total Runtime', f"{data['total_runtime']:.1f} min"]
+            ['Metric', 'Value', 'Metric', 'Value'],
+            ['Quantity', str(data['quantity']), 'Active Heads', str(data.get('active_heads', 15))],
+            ['Pieces per Cycle', str(data['pieces_per_cycle']), 'Total Cycles', str(data['cycles'])],
+            ['Stitch Time', f"{data['stitch_time']:.1f} min", 'Total Runtime', f"{data['total_runtime']:.1f} min"]
         ]
-
         if data.get('foam_used'):
-            prod_data.extend([
-                ['Foam Usage', 'Yes'],
-                ['Foam Sheets', str(data.get('sheets_needed', 'N/A'))]
-            ])
+            prod_data.append(['Foam Usage', 'Yes', 'Foam Sheets', str(data.get('sheets_needed', 'N/A'))])
 
-        table = Table(prod_data, colWidths=[2*inch, 3*inch])
+        table = Table(prod_data, colWidths=[1.5*inch, 2*inch, 1.5*inch, 2*inch])
         table.setStyle(self._get_table_style())
         elements.append(table)
-        elements.append(Spacer(1, 20))
 
-    def _add_cost_breakdown(self, elements, data):
-        elements.append(Paragraph("Cost Breakdown", self.styles['Section']))
-
+        # Cost Breakdown
+        elements.append(Paragraph("Cost Analysis", self.styles['Section']))
         costs_data = [
             ['Item', 'Quantity', 'Unit Cost', 'Total'],
             ['Thread', f"{data['total_spools']} spools", 
@@ -135,25 +120,14 @@ class PDFGenerator:
                 f"${data['total_cost']:.2f}"
             ])
 
-        table = Table(costs_data, colWidths=[1.5*inch, 1.5*inch, 1.5*inch, 1.5*inch])
+        table = Table(costs_data, colWidths=[1.75*inch, 1.75*inch, 1.75*inch, 1.75*inch])
         table.setStyle(self._get_table_style(has_totals=True))
         elements.append(table)
-        elements.append(Spacer(1, 20))
 
-    def _add_complexity_analysis(self, elements, data):
-        elements.append(Paragraph("Design Complexity Analysis", self.styles['Section']))
-
-        complexity_data = [
-            ['Metric', 'Score'],
-            ['Overall Complexity', f"{data['complexity_score']:.1f}/100"],
-            ['Direction Changes', str(data['direction_changes'])],
-            ['Density Score', f"{data['density_score']:.1f}/10"],
-            ['Stitch Length Variance', f"{data['stitch_length_variance']:.1f}/10"]
-        ]
-
-        table = Table(complexity_data, colWidths=[2*inch, 3*inch])
-        table.setStyle(self._get_table_style())
-        elements.append(table)
+        # Generate PDF
+        doc.build(elements)
+        buffer.seek(0)
+        return buffer.getvalue()
 
     def _get_table_style(self, has_totals=False):
         style = [
@@ -161,14 +135,16 @@ class PDFGenerator:
             ('TEXTCOLOR', (0, 0), (-1, 0), colors.HexColor('#1A237E')),
             ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
             ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-            ('FONTSIZE', (0, 0), (-1, 0), 10),
+            ('FONTSIZE', (0, 0), (-1, 0), 11),
             ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
             ('BACKGROUND', (0, 1), (-1, -1), colors.white),
             ('TEXTCOLOR', (0, 1), (-1, -1), colors.black),
             ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
-            ('FONTSIZE', (0, 1), (-1, -1), 9),
-            ('GRID', (0, 0), (-1, -1), 1, colors.black),
-            ('ALIGN', (-1, 1), (-1, -1), 'RIGHT')  # Right align numbers
+            ('FONTSIZE', (0, 1), (-1, -1), 10),
+            ('GRID', (0, 0), (-1, -1), 1, colors.HexColor('#E0E0E0')),
+            ('ALIGN', (-1, 1), (-1, -1), 'RIGHT'),  # Right align numbers
+            ('TOPPADDING', (0, 0), (-1, -1), 8),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
         ]
 
         if has_totals:

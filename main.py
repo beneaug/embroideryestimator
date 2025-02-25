@@ -39,6 +39,8 @@ def save_job_to_db(
     db: Session,
     design_data: dict,
     thread_costs: dict,
+    runtime_data: dict,
+    thread_colors: list = None,
     foam_costs: dict = None,
     use_foam: bool = False,
     use_coloreel: bool = False,
@@ -55,20 +57,33 @@ def save_job_to_db(
 
         # Create job record
         job = Job(
+            # Design Information
             design_name=design_data.get('design_name', 'Untitled'),
             stitch_count=int(design_data['stitch_count']),
             thread_length_yards=thread_length,
             width_mm=width,
             height_mm=height,
-            quantity=quantity,
             thread_weight=thread_weight,
+            color_changes=design_data.get('color_changes', 1),
+            thread_colors=thread_colors,
+
+            # Machine Configuration
+            quantity=quantity,
+            active_heads=active_heads,
             use_foam=use_foam,
             use_coloreel=use_coloreel,
-            active_heads=active_heads,
+
+            # Complexity Metrics
             complexity_score=float(design_data.get('complexity_score', 0)) if design_data.get('complexity_score') is not None else None,
             direction_changes=int(design_data.get('direction_changes', 0)) if design_data.get('direction_changes') is not None else None,
             density_score=float(design_data.get('density_score', 0)) if design_data.get('density_score') is not None else None,
-            stitch_length_variance=float(design_data.get('stitch_length_variance', 0)) if design_data.get('stitch_length_variance') is not None else None
+            stitch_length_variance=float(design_data.get('stitch_length_variance', 0)) if design_data.get('stitch_length_variance') is not None else None,
+
+            # Production Information
+            total_runtime=float(runtime_data['total_runtime']),
+            stitch_time=float(runtime_data['stitch_time']),
+            pieces_per_cycle=int(runtime_data['pieces_per_cycle']),
+            total_cycles=int(runtime_data['cycles'])
         )
         db.add(job)
         db.flush()
@@ -79,13 +94,15 @@ def save_job_to_db(
                 job_id=job.id,
                 material_type='thread',
                 quantity=thread_costs['total_spools'],
-                unit='spools'
+                unit='spools',
+                unit_cost=thread_costs['thread_cost'] / thread_costs['total_spools']
             ),
             MaterialUsage(
                 job_id=job.id,
                 material_type='bobbin',
                 quantity=thread_costs['total_bobbins'],
-                unit='pieces'
+                unit='pieces',
+                unit_cost=thread_costs['bobbin_cost'] / thread_costs['total_bobbins']
             )
         ]
 
@@ -95,39 +112,62 @@ def save_job_to_db(
                     job_id=job.id,
                     material_type='foam',
                     quantity=foam_costs['sheets_needed'],
-                    unit='sheets'
+                    unit='sheets',
+                    unit_cost=foam_costs['foam_unit_cost']
                 )
             )
 
         db.bulk_save_objects(materials)
 
         # Add cost breakdown
+        total_cost = thread_costs['thread_cost'] + thread_costs['bobbin_cost']
         costs = [
             CostBreakdown(
                 job_id=job.id,
                 cost_type='thread',
-                amount=thread_costs['thread_cost']
+                amount=thread_costs['thread_cost'],
+                details={'spools_per_head': thread_costs['spools_per_head']}
             ),
             CostBreakdown(
                 job_id=job.id,
                 cost_type='bobbin',
-                amount=thread_costs['bobbin_cost']
+                amount=thread_costs['bobbin_cost'],
+                details={'bobbins_per_piece': thread_costs['total_bobbins'] / quantity}
             )
         ]
 
         if use_foam and foam_costs:
+            foam_cost = foam_costs['total_cost']
+            total_cost += foam_cost
             costs.append(
                 CostBreakdown(
                     job_id=job.id,
                     cost_type='foam',
-                    amount=foam_costs['total_cost']
+                    amount=foam_cost,
+                    details={'sheets_per_piece': foam_costs['sheets_needed'] / quantity}
                 )
             )
+
+        # Add total cost record
+        costs.append(
+            CostBreakdown(
+                job_id=job.id,
+                cost_type='total',
+                amount=total_cost,
+                details={
+                    'cost_per_piece': total_cost / quantity,
+                    'thread_percentage': (thread_costs['thread_cost'] / total_cost) * 100,
+                    'bobbin_percentage': (thread_costs['bobbin_cost'] / total_cost) * 100,
+                    'foam_percentage': (foam_costs['total_cost'] / total_cost) * 100 if use_foam and foam_costs else 0
+                }
+            )
+        )
 
         db.bulk_save_objects(costs)
         db.commit()
         logger.info(f"Successfully saved job {job.id} to database")
         return job
+
     except Exception as e:
         logger.error(f"Error saving job to database: {str(e)}")
         db.rollback()
@@ -329,6 +369,8 @@ def main():
                                     db,
                                     design_data,
                                     thread_costs,
+                                    runtime_data,
+                                    thread_colors,
                                     foam_costs,
                                     use_foam,
                                     use_coloreel,
@@ -343,14 +385,21 @@ def main():
                     with export_col2:
                         if st.button("📄 Export PDF Report", use_container_width=True):
                             try:
+                                # Save current plot to bytes
+                                plot_buffer = io.BytesIO()
+                                fig.savefig(plot_buffer, format='png', dpi=300, bbox_inches='tight')
+                                plot_buffer.seek(0)
+
                                 report_data = {
                                     **design_data,
                                     **thread_costs,
                                     **runtime_data,
-                                    "foam_used": use_foam,
-                                    "quantity": quantity,
-                                    "thread_weight": thread_weight,
-                                    "active_heads": active_heads
+                                    'design_preview': plot_buffer,
+                                    'foam_used': use_foam,
+                                    'quantity': quantity,
+                                    'thread_weight': thread_weight,
+                                    'active_heads': active_heads,
+                                    'thread_colors': thread_colors
                                 }
 
                                 if use_foam and foam_costs:
@@ -365,6 +414,7 @@ def main():
                                     use_container_width=True
                                 )
                             except Exception as e:
+                                logger.error(f"Error generating PDF: {str(e)}")
                                 st.error(f"Error generating PDF: {str(e)}")
 
                 except Exception as e:
