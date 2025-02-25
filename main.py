@@ -9,6 +9,9 @@ from sqlalchemy.orm import Session
 import json
 from typing import Generator
 from datetime import datetime
+from utils.export import export_to_excel, export_to_csv
+import plotly.graph_objects as go
+import plotly.express as px
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -19,6 +22,28 @@ st.set_page_config(
     layout="wide",
     initial_sidebar_state="expanded"
 )
+
+# Add dark mode toggle in sidebar
+if 'theme' not in st.session_state:
+    st.session_state.theme = 'light'
+
+with st.sidebar:
+    st.title("Settings")
+    if st.toggle('Dark Mode', value=st.session_state.theme == 'dark'):
+        st.session_state.theme = 'dark'
+    else:
+        st.session_state.theme = 'light'
+
+# Update CSS based on theme
+theme_css = """
+<style>
+    :root {
+        --theme: %s;
+    }
+</style>
+""" % st.session_state.theme
+st.markdown(theme_css, unsafe_allow_html=True)
+
 
 # Initialize database
 try:
@@ -271,12 +296,50 @@ def main():
                             st.metric("Thread Length", f"{design_data['thread_length_yards']:.1f} yards")
                             st.metric("Design Height", f"{design_data['height_mm']:.1f}mm")
 
-                        # Complexity Analysis
-                        st.subheader("Complexity Analysis")
-                        complexity_score = design_data['complexity_score']
-                        st.progress(complexity_score / 100)
-                        st.write(f"Complexity Score: {complexity_score}/100")
-                        st.info(analyzer.get_complexity_description(complexity_score))
+                        # Enhanced Complexity Analysis with visualization
+                        if 'complexity_score' in design_data:
+                            st.subheader("Design Complexity Analysis")
+                            col1, col2 = st.columns(2)
+
+                            with col1:
+                                # Radar chart for complexity metrics
+                                metrics = ['Complexity', 'Density', 'Stitch Variance']
+                                values = [
+                                    design_data['complexity_score'] / 100,
+                                    design_data['density_score'] / 10,
+                                    design_data['stitch_length_variance'] / 10
+                                ]
+
+                                fig = go.Figure(data=go.Scatterpolar(
+                                    r=values,
+                                    theta=metrics,
+                                    fill='toself'
+                                ))
+
+                                fig.update_layout(
+                                    polar=dict(
+                                        radialaxis=dict(visible=True, range=[0, 1])
+                                    ),
+                                    showlegend=False
+                                )
+                                st.plotly_chart(fig, use_container_width=True)
+
+                            with col2:
+                                # Progress bar with description
+                                complexity_score = design_data['complexity_score']
+                                st.progress(complexity_score / 100)
+                                st.write(f"Complexity Score: {complexity_score}/100")
+
+                                # Enhanced tooltip with complexity description
+                                with st.expander("ℹ️ What does this mean?"):
+                                    st.write(analyzer.get_complexity_description(complexity_score))
+                                    st.info("""
+                                    - **0-30**: Simple design, suitable for beginners
+                                    - **31-60**: Moderate complexity, standard production
+                                    - **61-80**: Complex design, requires attention
+                                    - **81-100**: Highly complex, expert handling needed
+                                    """)
+
 
                         # Thread weight selection
                         thread_weight = st.selectbox("Thread Weight", [40, 60])
@@ -360,7 +423,7 @@ def main():
 
                     # Export options in a clean container
                     st.container()
-                    export_col1, export_col2 = st.columns(2)
+                    export_col1, export_col2, export_col3 = st.columns(3)
 
                     with export_col1:
                         if st.button("💾 Save Calculation", use_container_width=True):
@@ -417,18 +480,98 @@ def main():
                                 logger.error(f"Error generating PDF: {str(e)}")
                                 st.error(f"Error generating PDF: {str(e)}")
 
+                    with export_col3:
+                        if st.button("Export to Excel", use_container_width=True):
+                            try:
+                                excel_data = export_to_excel(job, "embroidery_calculation.xlsx") # Assuming export_to_excel handles single job data
+                                st.download_button(
+                                    "📥 Download Excel",
+                                    excel_data,
+                                    "embroidery_calculation.xlsx",
+                                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                                    use_container_width=True
+                                )
+                            except Exception as e:
+                                st.error(f"Error exporting to Excel: {str(e)}")
+
+                        if st.button("Export to CSV", use_container_width=True):
+                            try:
+                                csv_data = export_to_csv(job) # Assuming export_to_csv handles single job data
+                                st.download_button(
+                                    "📥 Download CSV",
+                                    csv_data,
+                                    "embroidery_calculation.csv",
+                                    "text/csv",
+                                    use_container_width=True
+                                )
+                            except Exception as e:
+                                st.error(f"Error exporting to CSV: {str(e)}")
+
+
                 except Exception as e:
                     logger.error(f"Error processing file: {str(e)}")
                     st.error(f"Error processing file: {str(e)}")
 
         with tab2:
             st.subheader("Calculation History")
+            # Add search and filter options
+            search_col1, search_col2 = st.columns(2)
+            with search_col1:
+                search_term = st.text_input("🔍 Search by design name",
+                    help="Enter part of the design name to filter results")
+            with search_col2:
+                date_range = st.date_input("📅 Date range",
+                    value=(datetime.now().date(), datetime.now().date()),
+                    help="Select date range to filter calculations")
+
+            # Add export buttons
+            export_col1, export_col2 = st.columns(2)
+            with export_col1:
+                if st.button("📊 Export to Excel", use_container_width=True):
+                    try:
+                        excel_data = export_to_excel(recent_jobs, "embroidery_calculations.xlsx")
+                        st.download_button(
+                            "📥 Download Excel",
+                            excel_data,
+                            "embroidery_calculations.xlsx",
+                            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                            use_container_width=True
+                        )
+                    except Exception as e:
+                        st.error(f"Error exporting to Excel: {str(e)}")
+
+            with export_col2:
+                if st.button("📄 Export to CSV", use_container_width=True):
+                    try:
+                        csv_data = export_to_csv(recent_jobs)
+                        st.download_button(
+                            "📥 Download CSV",
+                            csv_data,
+                            "embroidery_calculations.csv",
+                            "text/csv",
+                            use_container_width=True
+                        )
+                    except Exception as e:
+                        st.error(f"Error exporting to CSV: {str(e)}")
+
             try:
-                # Query recent jobs
-                recent_jobs = db.query(Job).order_by(Job.created_at.desc()).limit(10).all()
+                # Query jobs with filters
+                query = db.query(Job).order_by(Job.created_at.desc())
+
+                if search_term:
+                    query = query.filter(Job.design_name.ilike(f"%{search_term}%"))
+
+                if date_range:
+                    start_date, end_date = date_range
+                    query = query.filter(
+                        Job.created_at >= start_date,
+                        Job.created_at <= end_date
+                    )
+
+                recent_jobs = query.limit(10).all()
 
                 if not recent_jobs:
-                    st.info("No calculations saved yet")
+                    st.info("No calculations found matching your criteria")
                     return
 
                 for job in recent_jobs:
