@@ -433,17 +433,87 @@ def main():
 
                 for job in recent_jobs:
                     with st.expander(f"{job.design_name} - {job.created_at.strftime('%Y-%m-%d %H:%M')}"):
-                        col1, col2 = st.columns(2)
-                        with col1:
+                        # Design Information Section
+                        st.subheader("Design Information")
+                        info_col1, info_col2 = st.columns(2)
+
+                        with info_col1:
                             st.metric("Stitch Count", f"{job.stitch_count:,}")
-                            st.metric("Quantity", str(job.quantity))
+                            st.metric("Dimensions", f"{job.width_mm:.1f}mm × {job.height_mm:.1f}mm")
                             st.metric("Thread Weight", f"{job.thread_weight}wt")
-                        with col2:
-                            costs = {c.cost_type: c.amount for c in job.costs}
-                            st.metric("Thread Cost", f"${costs.get('thread', 0):.2f}")
-                            st.metric("Bobbin Cost", f"${costs.get('bobbin', 0):.2f}")
+
+                        with info_col2:
+                            st.metric("Thread Length", f"{job.thread_length_yards:.1f} yards")
+                            st.metric("Color Changes", str(job.color_changes))
+                            if job.complexity_score:
+                                st.metric("Complexity Score", f"{job.complexity_score:.1f}/100")
+
+                        # Production Information Section
+                        st.subheader("Production Details")
+                        prod_col1, prod_col2, prod_col3 = st.columns(3)
+
+                        with prod_col1:
+                            st.metric("Quantity", str(job.quantity))
+                            st.metric("Active Heads", str(job.active_heads))
+
+                        with prod_col2:
+                            st.metric("Pieces per Cycle", str(job.pieces_per_cycle))
+                            st.metric("Total Cycles", str(job.total_cycles))
+
+                        with prod_col3:
+                            st.metric("Stitch Time", f"{job.stitch_time:.1f} min")
+                            st.metric("Total Runtime", f"{job.total_runtime:.1f} min")
+
+                        # Cost Breakdown Section
+                        st.subheader("Cost Analysis")
+                        costs = {c.cost_type: c for c in job.costs}
+                        cost_col1, cost_col2, cost_col3 = st.columns(3)
+
+                        with cost_col1:
+                            thread_cost = costs.get('thread')
+                            if thread_cost:
+                                st.metric("Thread Cost", f"${thread_cost.amount:.2f}")
+                                if thread_cost.details:
+                                    st.caption(f"Spools per head: {thread_cost.details.get('spools_per_head', 'N/A')}")
+
+                        with cost_col2:
+                            bobbin_cost = costs.get('bobbin')
+                            if bobbin_cost:
+                                st.metric("Bobbin Cost", f"${bobbin_cost.amount:.2f}")
+                                if bobbin_cost.details:
+                                    st.caption(f"Bobbins per piece: {bobbin_cost.details.get('bobbins_per_piece', 'N/A'):.2f}")
+
+                        with cost_col3:
                             if job.use_foam:
-                                st.metric("Foam Cost", f"${costs.get('foam', 0):.2f}")
+                                foam_cost = costs.get('foam')
+                                if foam_cost:
+                                    st.metric("Foam Cost", f"${foam_cost.amount:.2f}")
+                                    if foam_cost.details:
+                                        st.caption(f"Sheets per piece: {foam_cost.details.get('sheets_per_piece', 'N/A'):.2f}")
+
+                            total_cost = costs.get('total')
+                            if total_cost:
+                                st.metric("Total Cost", f"${total_cost.amount:.2f}")
+                                if total_cost.details:
+                                    st.caption(f"Cost per piece: ${total_cost.details.get('cost_per_piece', 'N/A'):.2f}")
+
+                        # Additional configuration details
+                        st.divider()
+                        config_col1, config_col2 = st.columns(2)
+                        with config_col1:
+                            if job.use_foam:
+                                st.info("3D Foam: Enabled")
+                            if job.use_coloreel:
+                                st.info("Coloreel: Enabled")
+
+                        with config_col2:
+                            if job.thread_colors:
+                                st.write("Thread Colors:")
+                                color_cols = st.columns(len(job.thread_colors))
+                                for i, color in enumerate(job.thread_colors):
+                                    with color_cols[i]:
+                                        st.color_picker(f"Color {i+1}", color, disabled=True)
+
             except Exception as e:
                 logger.error(f"Error loading history: {str(e)}")
                 st.error("Error loading calculation history")
