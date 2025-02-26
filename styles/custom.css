@@ -1,123 +1,28 @@
-/* Base theme variables */
-:root {
-    --primary-color: #1A237E;
-    --secondary-color: #2E4057;
-    --background-color: #ffffff;
-    --text-color: #333333;
-    --border-color: #e0e0e0;
-    --card-background: #f8f9fa;
-    --success-color: #4CAF50;
-    --warning-color: #FFC107;
-    --error-color: #F44336;
-}
-
-/* Dark theme variables */
-[data-theme="dark"] {
-    --primary-color: #3F51B5;
-    --secondary-color: #5C6BC0;
-    --background-color: #121212;
-    --text-color: #ffffff;
-    --border-color: #424242;
-    --card-background: #1E1E1E;
-}
+@import url('https://fonts.googleapis.com/css2?family=Helvetica:wght@400;700&display=swap');
 
 .stApp {
     font-family: 'Helvetica', sans-serif;
-    color: var(--text-color);
-    background-color: var(--background-color);
 }
 
-/* Main content styling */
 .main {
     padding: 2rem;
 }
 
-/* Button styling */
 .stButton>button {
     border-radius: 4px;
     padding: 0.5rem 1rem;
-    transition: all 0.3s ease;
 }
 
-.stButton>button:hover {
-    transform: translateY(-1px);
-    box-shadow: 0 2px 5px rgba(0,0,0,0.2);
-}
-
-/* Cards and containers */
 .cost-card {
-    background-color: var(--card-background);
-    padding: 1.5rem;
+    background-color: #f8f9fa;
+    padding: 1rem;
     border-radius: 8px;
     margin: 1rem 0;
-    border: 1px solid var(--border-color);
-    transition: all 0.3s ease;
-}
-
-.cost-card:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
 }
 
 .preview-container {
-    border: 1px solid var(--border-color);
+    border: 1px solid #e0e0e0;
     border-radius: 8px;
-    padding: 1.5rem;
-    margin: 1rem 0;
-    background-color: var(--card-background);
-}
-
-/* Tooltips */
-.tooltip {
-    position: relative;
-    display: inline-block;
-}
-
-.tooltip .tooltiptext {
-    visibility: hidden;
-    background-color: var(--secondary-color);
-    color: #ffffff;
-    text-align: center;
-    padding: 5px 10px;
-    border-radius: 6px;
-    position: absolute;
-    z-index: 1;
-    bottom: 125%;
-    left: 50%;
-    transform: translateX(-50%);
-    opacity: 0;
-    transition: opacity 0.3s;
-}
-
-.tooltip:hover .tooltiptext {
-    visibility: visible;
-    opacity: 1;
-}
-
-/* Progress bars and metrics */
-.stProgress > div > div {
-    background-color: var(--primary-color);
-}
-
-.metric-container {
     padding: 1rem;
-    border-radius: 8px;
-    background-color: var(--card-background);
-    margin: 0.5rem 0;
-}
-
-/* Export buttons */
-.export-button {
-    width: 100%;
-    margin: 0.5rem 0;
-    background-color: var(--primary-color);
-    color: white;
-}
-
-/* Complexity visualization */
-.complexity-chart {
-    background-color: var(--card-background);
-    padding: 1rem;
-    border-radius: 8px;
     margin: 1rem 0;
 }
